@@ -7,10 +7,9 @@ the repository is not read. **Keep every section header below under its exact na
 format criteria grade exactly that. Your course repo link is the whole submission: no tool
 files and no evidence uploads are part of Assignment 5.
 
-**Contribution Number:** [1]
-**Student:** [Student name]
-**GitHub Username:** [your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comments upstream are identified by this name.]
+**Contribution Number:** 1
+**Student:** Melvin Sere
+**GitHub Username:** MELFARI
 **Issue:** [GitHub issue link]
 **Pull Request:** [GitHub PR link, once opened]
 
@@ -55,10 +54,9 @@ happened; these entries are the toolkit's own timeline.
 All four entries are graded. Keep every heading below, and fill each
 one in the week it belongs to.
 
-**Unit 5: [one line on the tool work]**
+**Unit 5: Turned my Unit 1 issue-select skill into issue-scout, with org-targeted search queries and free ranking filters**
 
-[2-4 sentences: what you built (the scout, your strategy), what broke
-or fell short, what changed because of it.]
+I built issue-scout on top of my Unit 1 rubric: a fit profile (Python and JS/TS, small bug fixes, AI/data and web apps), a search strategy with `gh search issues` queries, and ranking filters (no assignee, updated in the last 60 days, 10 comments or fewer, no feature or infra labels, bug label first, then fewest comments). Before scanning, my first queries returned 100 results each, mostly auto-generated issues from tiny personal repos, so I rewrote them with `--owner` lists of established AI/data and web orgs (33 and 25 real results). The first scan accepted 1 of 5 (gradio-app/fastrtc#140); the other 4 failed Issue Availability on an open PR or a fresh "assign me" comment, which my ranking can't see because `gh search` doesn't return linked PRs, so I accepted that as the cost of a free ranking stage and fixed my label filter, which missed crewAI's `feature-request` spelling.
 
 **Unit 6: [one line on the tool work]**
 
