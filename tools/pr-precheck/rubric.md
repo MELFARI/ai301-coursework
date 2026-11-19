@@ -1,0 +1,21 @@
+# Rubric: is this pull request ready to submit?
+
+## Checks
+
+| Check | Evidence | Pass condition | Weight |
+|---|---|---|---|
+| Plan Fidelity | Every file and hunk in the diff, read against the plan's scope, not-in-scope list, files list, and deviation notes; plus every claim the description makes about what the PR does ("implements the plan exactly", "no other changes", "also updates the docs") read against the diff | Every functional change in the diff is something the plan or its deviation notes name, every change the plan commits to is in the diff or is openly deferred in the plan's notes AND the description, and no description claim about the diff is contradicted by the diff. Fail on any unplanned behavior change (a new flag, option, setting, renamed API, rewritten function, or file the plan never mentions), on a planned deliverable silently missing, or on a description that claims more or less than the diff delivers. Debris (debug lines, dead code, churn) is graded by Clean Diff, not here. | required |
+| Decisive Test Evidence | The test-evidence section (and any before/after in the description), read against the plan's test plan and the repro's failing case | The evidence re-runs the plan's repro (the failing case that motivated the fix, not a control or an unchanged path) and shows its observable result before and after the change (pasted output, or a stated observed outcome such as an exit code, printed error, or rendered result), with the after matching the plan's expected result; every distinct failure mode the test plan names gets its own after result; and the repo's suite or checks are named with their outcome (a sentence like "`go test ./pkg/...` passes" is enough). Controls and smoke checks may be reported in prose. Fail on "tested locally", "works now", "verified on my machine", "tests pass" with no command named, evidence that only runs a control or a path the fix does not touch, or a failure mode from the test plan left with no result. A check reported failing or unavailable with its reason still counts as shown. | required |
+| Clean Diff | The unified diff's added and removed lines, plus the commit list | Every hunk serves the change. Fail if the diff contains any debug leftover (print/eprintln/console.log/dbg added for debugging), commented-out code or experiments, dead functions or allow(dead_code)/unused stubs, TODO/FIXME left on touched lines, pure formatting or re-indent churn, import reshuffles, or drive-by edits unrelated to the fix. Commit messages alone ("wip", "fmt") do not fail this check; what they carried into the diff does. | required |
+| Repo Standards | The repo-facts block's PR-template asks, contributing asks, and stated AI policy (live: `.github/PULL_REQUEST_TEMPLATE.md`, `docs/CONTRIBUTING.md`, and scope.md's house rules), read against the description, title, and diff | Every ask the repo states as required is met: required template sections are present with real content, required checklist lines (e.g. "closes #xxxx") are there, and any file the repo says a fix must include (a whatsnew/changelog entry) is in the diff; and if the repo's stated policy requires AI-use disclosure, the description discloses the tool used and how, in the author's own words. Fail on a required ask visibly ignored or a required disclosure missing. Asks marked optional ("if appropriate", "if applicable") never fail. If the repo states no AI policy, disclosure is not required in eval mode; in live mode the course always requires it. | required |
+| Maintainer Direction | Thread highlights and the plan's notes on them, read against the diff and description | If a maintainer in the thread gave explicit direction (an approach, a constraint, a question to answer), the PR follows it or answers it. Pass when the thread gives no direction. | preferred |
+
+## Verdict rule
+
+`accept` only if every `required` check grades `pass`. Any `required`
+check that grades `fail` or `unclear` gives `reject`: an unclear grade
+means the package does not show the fact the check needs, and a PR
+that cannot be verified from its package is not ready to submit.
+`preferred` checks are reported but never change the verdict. An
+honestly disclosed shortfall (stated in the plan's notes and restated
+in the description) is not a fail for any check.
