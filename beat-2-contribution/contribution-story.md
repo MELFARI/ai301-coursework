@@ -11,7 +11,7 @@ files and no evidence uploads are part of Assignment 5.
 **Student:** Melvin Sere
 **GitHub Username:** MELFARI
 **Issue:** https://github.com/MetOffice/CSET/issues/911
-**Pull Request:** [GitHub PR link, once opened]
+**Pull Request:** https://github.com/MetOffice/CSET/pull/2602
 
 One repository, built across units 5 to 8, telling the whole story of your real
 contribution. Fill it as you work, not at the end — the sections below ask for evidence that
@@ -62,10 +62,9 @@ I built issue-scout on top of my Unit 1 rubric: a fit profile (Python and JS/TS,
 
 I merged my three voice-guide copies into one guide at `~/.claude/voice-guard/voice-guide.md` and added four Upstream rules (claims, never claiming over someone, questions, pings). I also changed my never-post line about dates so a "report back by Monday" time is allowed but a fix date still isn't. The guard didn't run on Windows at first, because there's no `python3` and `claude` can't be launched by bare name from Python, so I pointed the hook at `python` and patched `check_voice.py` to find `claude` with `shutil.which` and read files as UTF-8. After that, the wiring test was stopped ("no body the guard can read") and my real claim passed (`guard-log.md`: "[hook] pass | target: gh issue comment .../911"). Writing `CLAUDE.local.md` for CSET showed that CSET doesn't run on native Windows at all (`plot.py` imports the Unix-only `fcntl`), so I recorded the working WSL + micromamba commands there, which every later session in that repo will read.
 
-**Unit 7: [one line on the tool work]**
+**Unit 7: Installed the ship-gate, wrote a WSL-based manifest for CSET, and opened PR #2602 through both hooks**
 
-[2-4 sentences: the ship-gate and your gate manifest. What it produced
-on your real branch, what fought you, what changed because of it.]
+The ship-gate runs my manifest (CSET's CI `make test-fast` pytest selection, `ruff check`, and `ruff format --check`, each through `wsl.exe` because CSET won't import on native Windows) and then my Unit 4 pr-precheck before a PR can open. On my branch it said `ship-gate: PASS` (3 repo checks ok, all 5 pr-precheck checks pass), but the first run crashed right after the PASS line printing a `→` to the Windows console, so I made its output UTF-8 safe and patched `claude` lookup and `python3` the same way as the voice guard. What actually stopped my PR was the voice guard, twice: first for a side note saying `time_aggregate` "raises ValueError" with no output under it, then for an annotated line `1085 passed (main: 1083 passed; 2 new)` that wasn't real output. Both broke my own "show it" rules, so I pasted the real error and split the counts into the exact lines each command printed before the PR went up. The hook also turned out to read my own shell commands: one that only mentioned opening a PR inside story text got stopped, so I now write such edits to a script file first.
 
 **Unit 8: [one line on the tool work]**
 
@@ -191,65 +190,64 @@ Deviations: none yet.
 
 ## Testing Strategy
 
-[What observable checks prove the fix: your reproduction steps re-run
-against the built change (before and after), and the repo's own test
-suite or checks with the outcome shown. "Tests pass" with nothing
-observable named is not a strategy.]
+The change is two tests, so the proof is that they fail on the bug and pass on the fix, plus the repo's own checks.
+
+1. **The new tests catch the original bug.** I appended `test_aggregate_cubelist` and `test_aggregate_cubelist_mixed_frt` to the test file at `4d6f5f0f` (before #2467) and ran them: `2 failed`, both with `AttributeError: 'CubeList' object has no attribute 'coord'`, the same error my reproduction showed. On my branch (`4002662a`): `test_aggregate_cubelist PASSED`, `test_aggregate_cubelist_mixed_frt PASSED`.
+2. **The reproduction, re-run.** `repro_911.py` on the branch prints the same output as on `main`: `2-cube list -> CubeList [(2, 17, 13), (2, 17, 13)]`, `each matches single result: True`, and `mixed list -> CubeList [(3, 17, 13), (3, 121, 3, 3)]`. Before #2467 it crashes with the `AttributeError`.
+3. **The repo's checks** (my ship manifest, taken from `.github/workflows/pull-request-checks.yml` and `.pre-commit-config.yaml`): CI's `make test-fast` selection, `pytest -n logical -m 'not slow and not network and not cylc'`, went from `1083 passed` on `main` to `1085 passed` on the branch; `ruff check src tests` gives `All checks passed!`; `ruff format --check src tests` gives `118 files already formatted`. I didn't run `pre-commit run --all-files` (it rewrites files) or `make test-workflow` (needs cylc) locally; CI runs them on the PR.
+
+What the tests assert: a `CubeList` in gives a `CubeList` out, of the same length, and each result's data matches `time_aggregate` on that cube alone (`np.allclose(..., equal_nan=True)`), for both the single- and multiple-forecast-reference-time branches.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: my ship manifest plus CSET's own commands, run in WSL through micromamba (`~/bin/micromamba run -n cset-dev ...`), and a git worktree at `4d6f5f0f` to run the new tests against the old code.
+- What it produced: `2 failed` (AttributeError) before vs `2 passed` after for the new tests; `1083 passed` vs `1085 passed` for the suite; ruff clean. All saved in `test_evidence.md`.
+- Difficulties: the patch of my new tests didn't apply to the old test file (it had changed since), so I appended the two functions instead. WSL's git can't read a worktree created from Windows, so I ran git from Windows and Python from WSL.
+- What changed: nothing in the plan's test steps. I added the "fails on old code" run as the main before/after, because a test-only PR has no code change to show.
 
 ---
 
 ## Implementation Notes
 
-[A running log, added to as you work. Date each entry. What you
-built, decisions you made when you made them, wrong turns included.]
+**2026-11-20**
 
-**[Date]**
+Set up the ship-gate and manifest. CSET's CI test command (`make test-fast` without coverage) passed on `main` in WSL: `1083 passed` in 73s. Wrote `plan.md` from my Solution Approach; plan-check accepted it on the first run, and its voice pass made me paste the repro output into my (unposted) plan comment.
 
-[Entry]
+**2026-11-20**
 
-**[Date]**
+Created branch `test/911-time-aggregate-cubelist` and added `test_aggregate_cubelist` and `test_aggregate_cubelist_mixed_frt` after `test_aggregate_multi_frt`, using the `cube` and `long_forecast_multi_day` fixtures. Wrong turn: my first mixed test re-aggregated its input cubes to get the expected values and failed with `ValueError: A coordinate "interval" already exists in the cube.` `time_aggregate` adds that coordinate to the cubes you pass in. I changed the test to build expected values from fresh `.copy()` inputs, like the existing tests do, recorded it as a deviation in `plan.md`, and mentioned the in-place behavior in the PR without changing it (outside #911). Committed as `4002662a` ("Test time_aggregate with CubeList input", body ends "Fixes #911").
 
-[Entry]
+**2026-11-20**
+
+Proved the tests catch the bug: appended them to the test file at `4d6f5f0f` (before #2467) and got `2 failed` with the original `AttributeError`. Ran the manifest checks on the branch: `1085 passed`, ruff clean. Ship-gate passed by hand. Opening the PR, the voice guard stopped me twice (a claim without output, then an annotated output line) and I fixed `pr_draft.md` both times. Opened https://github.com/MetOffice/CSET/pull/2602.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: Claude Code in my CSET clone, with `CLAUDE.local.md` loaded (the WSL commands and the test file layout came from it instead of being rediscovered).
+- What it produced: the two tests (+36 lines in one file, one commit), and the worktree runs against the old code.
+- Difficulties: an edit silently didn't apply at first (the file hadn't been read in that session), so my first test run only ran the 3 existing `*cubelist` tests and looked like a pass. I caught it because the count was wrong ("3 passed, 16 deselected") and re-ran the two new tests by name.
+- What changed: I now run new tests by their exact node IDs and check the names in the output before trusting a pass.
 
 ---
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when opened]
+**PR Link:** https://github.com/MetOffice/CSET/pull/2602
 
-**PR Description:** [what the PR says; much of the content above
-adapts into it]
+**PR Description:** Title "Add tests for time_aggregate with CubeList input". It says "Fixes #911 (part of #721)" and explains that `time_aggregate` crashed on a `CubeList` before #2467, which fixed it without linking this issue or adding a `CubeList` test. The PR is test-only: `test_aggregate_cubelist` and `test_aggregate_cubelist_mixed_frt` in `tests/operators/test_aggregate.py`, with no change to `aggregate.py`. Evidence: both new tests fail on `4d6f5f0f` with `AttributeError: 'CubeList' object has no attribute 'coord'` and pass on the branch; the CI test selection goes from `1083 passed` on `main` to `1085 passed`; `ruff check` and `ruff format --check` are clean; `pre-commit --all-files` and `make test-workflow` are left to CI. It notes, with the error output, that `time_aggregate` modifies its input cubes, left alone as out of scope. It discloses "AI-assisted code from Claude Code (Anthropic)" and what I used it for, and fills CSET's 6-item checklist (docs N/A for a test-only change; CI box unticked until CI runs).
 
 **Maintainer Feedback:**
 
-- [Date]: [feedback received, or "none yet"; silence is a normal
-  state and costs you nothing]
-- [Date]: [how you addressed it]
+- 2026-11-20: none yet (PR just opened; my claim's question on #911 is also unanswered).
 
-**Status:** [Awaiting review / Iterating / Merged / Closed. The
-status is a fact you record, never a grade: the PR is graded as
-opened.]
+**Status:** Awaiting review
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: the ship-gate (my manifest's 3 checks plus my Unit 4 pr-precheck), run by hand with `check_gate.py --branch --title ... --body-file pr_draft.md` and then as a hook through Claude Code when opening the PR, alongside the voice guard.
+- What it produced: `ship-gate: PASS`, with pr-precheck passing Plan Fidelity ("Diff adds only the two planned test functions ... the sole deviation ... is recorded in plan.md's Deviations"), Decisive Test Evidence, Clean Diff, Repo Standards, and Maintainer Direction. The voice guard then stopped the PR twice before letting it through.
+- Difficulties: on Windows the gate crashed after printing PASS (a `→` the console couldn't encode), which would have looked like a failure. After I edited `pr_draft.md`, the hook had to re-run everything, because any change to the description voids the 30-minute pass.
+- What changed: I made the gate's output UTF-8 safe. I rewrote two lines of `pr_draft.md` so every claim has real output under it, which the ship-gate's pr-precheck hadn't flagged but my voice rules did.
 
 ---
 
