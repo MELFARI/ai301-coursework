@@ -164,29 +164,28 @@ mixed list   -> CubeList [(3, 17, 13), (3, 121, 3, 3)]
 
 **Analysis**
 
-[Your analysis of the root cause: what is causing the issue, traced
-to the files and functions involved.]
+`time_aggregate` in `src/CSET/operators/aggregate.py` used to call iris on its `cubes` argument directly, so a `CubeList` failed inside `iris.coord_categorisation.add_categorised_coord` with `AttributeError: 'CubeList' object has no attribute 'coord'` (`aggregate.py` line 98 at `4d6f5f0f`). PR #2467 (merged 2026-09-23) rewrote it to run `cubes = iter_maybe(cubes)`, aggregate each cube with `_aggregate_in_time_single_frt` or `_aggregate_in_time_multiple_frt` depending on its `forecast_reference_time` length, and return one Cube for a single result or a `CubeList` otherwise. My reproduction confirms `main` (`e9134662`) now handles a `CubeList` correctly. The remaining gap, and the reason #911 is still open, is that no test in `tests/operators/test_aggregate.py` passes a `CubeList` to `time_aggregate` (the four `time_aggregate` tests use a single Cube), so nothing would catch a regression in that path.
 
 **Proposed Solution**
 
-[High-level description of your fix approach, and what you are
-deliberately NOT changing.]
+Add tests only: pin the `CubeList` behavior of `time_aggregate` in `tests/operators/test_aggregate.py`, using the existing `cube` and `long_forecast_multi_day` fixtures and the same style as the sibling CubeList tests from #721 (for example PR #2548 for `cape_ratio`). The PR description says "Fixes #911" and credits #2467 for the implementation. Not changing: `aggregate.py` or any other source file (the behavior is already correct), the existing tests, the test data, or the other #721 operators (#925 and #926 have their own claimants).
 
 **Implementation Plan**
 
-1. [Modify file X to do Y]
-2. [Add or change Z]
-3. [Update tests]
+1. On a branch `test/911-time-aggregate-cubelist` from `main`, add `test_aggregate_cubelist` to `tests/operators/test_aggregate.py`, after `test_aggregate_multi_frt`: a 2-cube `CubeList` of `cube` copies with `method="SUM"`, `interval_iso="PT2H"` returns a `CubeList` of length 2, and each result's data equals `time_aggregate` on the single cube.
+2. Add `test_aggregate_cubelist_mixed_frt`: a `CubeList` of `cube` (one forecast reference time) and `long_forecast_multi_day` (several) with `interval_iso="PT1H"` returns a `CubeList` whose results each equal aggregating that cube alone, so both the single-frt and multiple-frt branches are covered.
+3. Test plan: (a) run the new tests on the branch and expect them to pass; (b) copy the new tests onto the pre-#2467 code (`4d6f5f0f`) and expect them to fail with `AttributeError: 'CubeList' object has no attribute 'coord'`, proving they catch the original bug; (c) re-run my reproduction script on the branch, expecting the same `CubeList` output as on `main`; (d) run the manifest checks (CI's `make test-fast` pytest selection, `ruff check src tests`, `ruff format --check src tests`) and expect the suite to go from `1083 passed` to `1085 passed` with ruff clean.
 
-[Record deviations here as they happen: what changed mid-build and
-why. A recorded deviation is honest work; silent drift is not.]
+Risks and unknowns: the maintainers haven't answered my claim's question yet, and may prefer to close #911 as done by #2467; CSET's docs encourage early PRs, so I'll open the PR and say that plainly in it. Comparing cube data with `np.allclose(..., equal_nan=True)` rather than `==` avoids failing on masked or NaN values.
+
+Deviations: none yet.
 
 **Toolkit**
 
-- Tool:
-- What it produced:
-- Difficulties:
-- What changed:
+- Tool: plan-check (my Unit 3 skill, now with the real-repo scope), run as `plan-check: grade my plan in plan.md and draft comment in plan-comment.md for issue .../911` from my CSET clone.
+- What it produced: accept on the first run, all 6 checks passing. For example, Decisive Test Plan: "copy the new tests onto the pre-#2467 code (4d6f5f0f) and expect them to fail with AttributeError; 1083 passed -> 1085 passed". It also checked my claim that `test_aggregate.py` has no CubeList test for `time_aggregate` against the repo itself.
+- Difficulties: its voice-guide pass flagged that my plan comment said "I reproduced this" without pasting the output, breaking my own "Show it, don't just say it" rule. The rubric verdict didn't catch that; only the voice pass did.
+- What changed: I added the before/after repro output under that sentence in `plan-comment.md`. The plan itself needed no changes. (The plan comment isn't posted on the thread; the PR carries it.)
 
 ---
 
